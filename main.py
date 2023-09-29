@@ -42,15 +42,14 @@ def show_gameplay():
 
 def sort_score(player1hand):
     for card in player1hand.hand:
-        if player1hand.score <= 21:
-            break;
-        else:
-            if "Ace" in card:
-                player1hand.score -= 10
+        if "Ace" in card:
+            player1hand.score -= 10
 
 
 def player_hit():
     print("Player Hit")
+    hit_button["state"] = "disabled"
+    stand_button["state"] = "disabled"
     draw_cards(deck, player, 1)
     player_hand_count = len(player.hand)
     info.config(text=f"The player hits, and draws - {player.hand[player_hand_count - 1]}", wraplength=350)
@@ -58,7 +57,7 @@ def player_hit():
     if player.score > 21 and player.has_ace():
         sort_score(player)
     display_hand(player, dealer)
-    window.after(1000, func=gameplay)
+    window.after(2000, func=gameplay)
 
 
 def player_stand():
@@ -66,6 +65,24 @@ def player_stand():
     player_ended = True
     info.config(text="The player stands")
     window.after(1000, func=gameplay)
+
+def play_game():
+    global player_ended
+    play_again_button.config(text="Play again")
+    play_again_button["state"] = "disabled"
+    stop_play_button["state"] = "disabled"
+    dealer.clear_hand()
+    player.clear_hand()
+    player_ended = False
+    gameplay()
+
+def stop_game():
+    window.quit()
+
+def options():
+    info.config(text='If you want to play again, press "Play Again" button. Else press "Stop" button.')
+    play_again_button["state"] = "normal"
+    stop_play_button["state"] = "normal"
 
 
 # -------------------------------- Design ------------------------------------- #
@@ -105,16 +122,27 @@ player_score.place(x=710, y=440)
 
 # Other
 hit_button = Button(text="Hit", font=("Arial", 20), width=10, height=2, bg="red", command=player_hit)
+hit_button["state"] = "disabled"
 hit_button.place(x=105, y=255)
 
 stand_button = Button(text="Stand", font=("Arial", 20), width=10, height=2, bg="cyan", command=player_stand)
+stand_button["state"] = "disabled"
 stand_button.place(x=680, y=255)
 
-info = Label(window, text="", font=("Arial", 16), wraplength=350)
+info = Label(window, text='If you want to play, press the "Play" button. If not either press "Stop" or the exit button.', font=("Arial", 16), wraplength=350)
 info.place(x=300, y=250, width=350, height=100)
 
 round_label = Label(text=f"Round: {game_round}", font=("Arial", 16), bg="green", fg="yellow")
 round_label.place(x=10, y=10)
+
+deck_size_label = Label(text=f"Deck Size: {deck.deck_size()}", font=("Arial", 16), bg="green", fg="yellow")
+deck_size_label.place(x=120, y=10)
+
+play_again_button = Button(text="Play", font=("Arial", 12), width=10, height=1, bg="Yellow", command=play_game)
+play_again_button.place(x=10, y=50)
+
+stop_play_button = Button(text="Stop", font=("Arial", 12), width=10, height=1, bg="Yellow", command=stop_game)
+stop_play_button.place(x=120, y=50)
 
 """
 # Welcome Screen
@@ -147,7 +175,7 @@ def compare_score(player1score, player2score):
             info.config(text="You lose.")
         else:
             info.config(text="It's a draw.")
-
+    window.after(7000, func=options)
 
 def display_hand(player, dealer):
     global player_ended
@@ -177,14 +205,15 @@ def display_hand(player, dealer):
 
 def dealer_plays():
     dealer.score = deck.get_score(dealer.hand, False)
+    if dealer.score > 21 and dealer.has_ace():
+        sort_score(dealer)
     print(f"{dealer.score}")
     info.config(text=f"The dealer hits, and draws - {dealer.hand[len(dealer.hand) - 1]}", wraplength=350)
-    if dealer.score < 17:
+    if dealer.score < 17 and player.score <= 21:
         display_hand(player, dealer)
         draw_cards(deck, dealer, 1)
         dealer.score = deck.get_score(dealer.hand, False)
-        if dealer.score > 21 and dealer.has_ace():
-            sort_score(dealer)
+        print(f"New Card {dealer.hand[len(dealer.hand) - 1]} Score = {dealer.score}")
         window.after(5000, func=dealer_plays)
 
     else:
@@ -192,31 +221,38 @@ def dealer_plays():
         display_hand(player, dealer)
         compare_score(player, dealer)
 
-
 def start_draw():
     draw_cards(deck, player, 2)
     draw_cards(deck, dealer, 2)
     player.score = deck.get_score(player.hand, False)
     dealer.score = deck.get_score(dealer.hand, True)
     display_hand(player, dealer)
+    window.after(1000, func=gameplay)
 
 
 def gameplay():
-    global player_ended
+    global player_ended, game_round
+    round_label.config(text=f"Round: {game_round}")
+    deck_size_label.config(text=f"Deck Size: {deck.deck_size()}")
+    if deck.deck_size() < 10:
+        deck.deck = []
+        deck.new_deck()
     if player.hand_count() == 0 and dealer.hand_count() == 0:
         start_draw()
+    if player.score == 21 and player.hand_count() == 2:
+        player_ended = True
 
-    if player.score <= 21 and not player_ended:
-        info.config(text='Do you want to "hit" (get another card) or "stand"? Please press one of the buttons.')
-        hit_button["state"] = "normal"
-        stand_button["state"] = "normal"
-    else:
+    if player.score >= 21 or player_ended:
         player_ended = True
         info.config(text='The dealer plays')
         hit_button["state"] = "disabled"
         stand_button["state"] = "disabled"
         window.after(2000, func=dealer_plays)
+        game_round += 1
+    else:
+        info.config(text='Do you want to "hit" (get another card) or "stand"? Please press one of the buttons.')
+        hit_button["state"] = "normal"
+        stand_button["state"] = "normal"
 
 
-gameplay()
 window.mainloop()
